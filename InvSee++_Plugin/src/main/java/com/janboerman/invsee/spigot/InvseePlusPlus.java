@@ -1,5 +1,6 @@
 package com.janboerman.invsee.spigot;
 
+import com.janboerman.invsee.metrics.Metrics;
 import com.janboerman.invsee.paper.AsyncTabCompleter;
 import com.janboerman.invsee.folia.FoliaScheduler;
 import com.janboerman.invsee.spigot.api.CreationOptions;
@@ -23,10 +24,10 @@ import com.janboerman.invsee.spigot.internal.InvseePlatform;
 import com.janboerman.invsee.spigot.internal.NamesAndUUIDs;
 import com.janboerman.invsee.spigot.internal.OpenSpectatorsCache;
 import com.janboerman.invsee.spigot.api.Scheduler;
+import com.janboerman.invsee.spigot.internal.resolve.ResolveStrategyType;
 import com.janboerman.invsee.spigot.perworldinventory.PerWorldInventoryHook;
 import com.janboerman.invsee.spigot.perworldinventory.PerWorldInventorySeeApi;
-import org.bstats.bukkit.Metrics;
-import org.bstats.charts.SimplePie;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -40,9 +41,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.List;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,7 +61,7 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
     private CreationOptions<EnderChestSlot> platformCreationOptionsEnderInventory;
     private boolean dirtyConfig = false;
 
-    private Metrics bstats;
+    private Metrics metrics;
 
     public InvseePlusPlus() {
         boolean asyncTabCompleteEvent;
@@ -127,6 +127,11 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
         api.setEnderInventoryMirror(getEnderChestMirror(config));
         api.setLogOptions(getLogOptions(config));
         api.setPlaceholderPalette(getPlaceholderPalette(platform, config));
+        List<ResolveStrategyType> uuidResolveStrategies = getUuidResolveStrategies(config);
+        if (uuidResolveStrategies != null) lookup.setUuidResolveTypes(uuidResolveStrategies);
+        List<ResolveStrategyType> nameResolveStrategies = getUsernameResolveStrategies(config);
+        if (nameResolveStrategies != null) lookup.setNameResolveTypes(nameResolveStrategies);
+        lookup.materialiseUsernameAndUniqueIdResolveStrategies();
 
         //commands
         setupCommands();
@@ -134,8 +139,8 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
         //event listeners
         setupEvents(scheduler, playerDatabase);
 
-        //bStats
-        setupBStats();
+        //metrics
+        metrics = Metrics.enable(this);
 
         //idea: shoulder look functionality. an admin will always see the same inventory that the target player sees.
         //can I make it so that the bottom slots show the target player's inventory slots? would probably need to do some nms hacking
@@ -178,23 +183,6 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
             }
         }
     }
-
-    private void setupBStats() {
-        int pluginId = 9309;
-        bstats = new Metrics(this, pluginId);
-        bstats.addCustomChart(new SimplePie("Back-end", () -> {
-            if (this.api instanceof PerWorldInventorySeeApi) {
-                return "PerWorldInventory";
-//            } else if (this.api instanceof MultiverseInventoriesSeeApi) {
-//                return "Multiverse-Inventories";
-            }
-            //else if: MyWorlds
-            //else if: Separe-World-Items
-            else {
-                return "Vanilla";
-            }
-        }));
-    }
 	
 	@Override
 	public void onDisable() {
@@ -202,8 +190,9 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
             api.shutDown(); //complete all inventory futures - ensures /invgive and /endergive will still work even if the server shuts down.
         }
 
-        if (bstats != null) {
-            bstats.shutdown();
+        if (metrics != null) {
+            metrics.disable();
+            metrics = null;
         }
 	}
 
@@ -491,6 +480,24 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
                 "e_45 e_46 e_47 e_48 e_49 e_50 e_51 e_52 e_53");
     }
 
+    private static List<ResolveStrategyType> getUuidResolveStrategies(FileConfiguration config) {
+        return toResolveStrategyTypes(config.getStringList("uuid-resolve-strategies"));
+    }
+
+    private static List<ResolveStrategyType> getUsernameResolveStrategies(FileConfiguration config) {
+        return toResolveStrategyTypes(config.getStringList("username-resolve-strategies"));
+    }
+
+    private static List<ResolveStrategyType> toResolveStrategyTypes(List<String> list) {
+        if (list == null || list.isEmpty()) return null;
+        List<ResolveStrategyType> result = new ArrayList<>(list.size());
+        for (String strat : list) {
+            result.add(ResolveStrategyType.fromString(strat));
+        }
+        return result;
+    }
+
+
     /** @deprecated use your own player database instead. */
     @Deprecated//(forRemoval = true, since = "0.22.0") //TODO remove in 1.0
     public OfflinePlayerProvider getOfflinePlayerProvider() {
@@ -503,5 +510,9 @@ public class InvseePlusPlus extends JavaPlugin implements com.janboerman.invsee.
         sender.sendMessage(ChatColor.YELLOW + "Most likely this is a Minecraft/InvSee++ version mismatch.");
         sender.sendMessage(ChatColor.YELLOW + "Check your logs for more information.");
         return true;
+    }
+
+    public Path getJarFilePath() {
+        return getFile().toPath();
     }
 }

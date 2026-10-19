@@ -2,6 +2,9 @@ package com.janboerman.invsee.spigot.impl_1_21_9_R6;
 
 import java.util.Optional;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import org.bukkit.craftbukkit.v1_21_R6.CraftServer;
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 
@@ -13,6 +16,7 @@ public class FakeCraftPlayer extends CraftPlayer {
         super(server, entity);
     }
 
+    // Called from ServerPlayer#addAdditionalSaveData
     /* Normally, CraftPlayer overwrites the bukkit.lastPlayed field with System.currentTimeMillis()
      * For fake players, we want to keep the original value. Same for Paper.LastSeen.
      * This should fix https://github.com/Jannyboy11/InvSee-plus-plus/issues/13. */
@@ -23,20 +27,35 @@ public class FakeCraftPlayer extends CraftPlayer {
         Optional<ValueInput> maybeFreshlyLoaded = loadPlayerTag();
         if (maybeFreshlyLoaded.isPresent()) { //can be absent if the player hasn't played before.
             ValueInput freshlyLoaded = maybeFreshlyLoaded.get();
+
             Optional<ValueInput> readBukkit = freshlyLoaded.child("bukkit");
             Optional<ValueInput> readPaper = freshlyLoaded.child("Paper");
+            // https://github.com/Jannyboy11/InvSee-plus-plus/issues/193
+            Optional<ValueInput> readRootVehicle = freshlyLoaded.child("RootVehicle");
 
-            ValueOutput writeBukkit = tag.child("bukkit");
-            ValueOutput writePaper = tag.child("Paper");
+            // Note: it is of utmost importance to NEVER call tag.child("bukkit") or tag.child("Paper").
+            // Doing so will cause the entire "bukkit" or "Paper" sections to be reset to an empty NBTTagCompound.
+            // So instead, we will just obtain the NBTTagCompound by calling .buildResult(), and write to that compound!
+            // See https://github.com/Jannyboy11/InvSee-plus-plus/issues/172
+            CompoundTag writeTag = ((TagValueOutput) tag).buildResult();
+            CompoundTag writeBukkit = writeTag.getCompoundOrEmpty("bukkit");
+            CompoundTag writePaper = writeTag.getCompoundOrEmpty("Paper");
 
             //populate using bukkit's and paper's old values
             copyLong(readBukkit, writeBukkit, "lastPlayed");
             copyLong(readPaper, writePaper, "LastSeen");
+            copyCompound(readRootVehicle, writeTag, "RootVehicle");
         }
     }
 
-    private static void copyLong(Optional<ValueInput> from, ValueOutput to, String key) {
-        from.flatMap(input -> input.getLong(key)).ifPresent(value -> to.putLong(key, value));
+    private static void copyLong(Optional<ValueInput> from, CompoundTag writeTag, String key) {
+        from.flatMap(valueInput -> valueInput.getLong(key)).ifPresent(longValue -> writeTag.putLong(key, longValue));
+    }
+
+    private static void copyCompound(Optional<ValueInput> from, CompoundTag writeTag, String key) {
+        if (from.isPresent() && from.get() instanceof TagValueInput tagValueInput) {
+            writeTag.put(key, tagValueInput.input);
+        }
     }
 
     private Optional<ValueInput> loadPlayerTag() {

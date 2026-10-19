@@ -10,6 +10,7 @@ import com.janboerman.invsee.utils.ConcatList;
 import com.janboerman.invsee.utils.Ref;
 import com.janboerman.invsee.utils.SingletonList;
 
+import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftHumanEntity;
 import org.bukkit.craftbukkit.v1_21_R6.util.CraftChatMessage;
 
@@ -104,6 +105,7 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 		if (craftingContents != personalContents) {
 			craftingContents.clear();
 		}
+		setChanged();
 	}
 
 	//vanilla
@@ -209,7 +211,10 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 	//vanilla
 	@Override
 	public void setChanged() {
-		//nothing to do here?
+		//update target player cached crafting recipe:
+		if (this.nmsPlayerInventory.player instanceof ServerPlayer serverPlayer) {
+			serverPlayer.inventoryMenu.slotsChanged(nmsPlayerInventory);
+		}
 	}
 
 	//vanilla

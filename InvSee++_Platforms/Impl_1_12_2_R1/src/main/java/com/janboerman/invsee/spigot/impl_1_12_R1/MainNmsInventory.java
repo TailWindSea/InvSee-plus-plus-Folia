@@ -24,6 +24,7 @@ import java.util.List;
 
 class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBukkitInventory, MainNmsInventory> implements IInventory, ITileEntityContainer {
 
+    protected Runnable updateTargetCraftingResults;
     protected NonNullList<ItemStack> storageContents;
     protected NonNullList<ItemStack> armourContents;
     protected NonNullList<ItemStack> offHand;
@@ -52,6 +53,9 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
         };
         IInventory /*InventoryCrafting*/ playerCrafting = ((CraftInventory) target.defaultContainer.getBukkitView().getTopInventory()).getInventory();
         this.personalContents = this.playerCraftingContents = playerCrafting.getContents();
+        this.updateTargetCraftingResults = () -> {
+            if (target instanceof EntityPlayer) target.defaultContainer.a(inv);
+        };
     }
 
     @Override
@@ -83,6 +87,7 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
         this.onCursor = from.onCursor;
         this.playerCraftingContents = from.playerCraftingContents;
         this.personalContents = from.personalContents;
+        this.updateTargetCraftingResults = from.updateTargetCraftingResults;
         update();
     }
 
@@ -199,6 +204,9 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 
     @Override
     public void update() {
+        //update target player cached crafting recipe:
+        updateTargetCraftingResults.run();
+
         //called after an item in the inventory was removed, added or updated.
         //looking at InventorySubContainer, I don't think we need to do anything here.
 

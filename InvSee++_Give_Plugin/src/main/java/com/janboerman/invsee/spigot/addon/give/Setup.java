@@ -46,7 +46,15 @@ class SetupImpl implements Setup {
         SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_4(), ServerSoftware.CRAFTBUKKIT_1_21_4, new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_4));
         SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_5(), ServerSoftware.CRAFTBUKKIT_1_21_5, new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_5));
         SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_7(), ServerSoftware.CRAFTBUKKIT_1_21_7, ServerSoftware.CRAFTBUKKIT_1_21_8, new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_7), new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_8));
-        SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_9(), ServerSoftware.CRAFTBUKKIT_1_21_9, new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_9));
+        SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_9(), ServerSoftware.CRAFTBUKKIT_1_21_9, ServerSoftware.CRAFTBUKKIT_1_21_10, new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_9), new ServerSoftware(MinecraftPlatform.PAPER, MinecraftVersion._1_21_10));
+        SUPPORTED.registerSupportedVersion(() -> new Impl_1_21_11(), ServerSoftware.CRAFTBUKKIT_1_21_11);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_Paper_1_21_11(), ServerSoftware.PAPER_1_21_11);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_26_1_1(), ServerSoftware.CRAFTBUKKIT_26_1_1, ServerSoftware.CRAFTBUKKIT_26_1_2, ServerSoftware.CRAFTBUKKIT_26_1);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_Paper_26_1_1(), ServerSoftware.PAPER_26_1_1, ServerSoftware.PAPER_26_1_2);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_26_2(), ServerSoftware.CRAFTBUKKIT_26_2);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_Paper_26_2(), ServerSoftware.PAPER_26_2);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_26_3(), ServerSoftware.CRAFTBUKKIT_26_3);
+        SUPPORTED.registerSupportedVersion(() -> new Impl_Paper_26_3(), ServerSoftware.PAPER_26_3);
         final SetupProvider glowstoneProver = () -> new Impl_Glowstone();
         final MinecraftVersion[] minecraftVersions = MinecraftVersion.values();
         for (int idx = MinecraftVersion._1_8.ordinal(); idx < MinecraftVersion._1_12_2.ordinal(); idx++) {
@@ -63,6 +71,55 @@ class SetupImpl implements Setup {
     @Override
     public GiveApi getGiveApi() {
         return api;
+    }
+}
+
+class Impl_26_3 extends SetupImpl {
+    Impl_26_3() {
+        super(com.janboerman.invsee.spigot.addon.give.impl_26_3.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_Paper_26_3 extends SetupImpl {
+    Impl_Paper_26_3() {
+        super(com.janboerman.invsee.paper.addon.give.impl_26_3.GiveImpl.INSTANCE);
+    }
+}
+
+
+class Impl_26_2 extends SetupImpl {
+    Impl_26_2() {
+        super(com.janboerman.invsee.spigot.addon.give.impl_26_2.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_Paper_26_2 extends SetupImpl {
+    Impl_Paper_26_2() {
+        super(com.janboerman.invsee.paper.addon.give.impl_26_2.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_26_1_1 extends SetupImpl {
+    Impl_26_1_1() {
+        super(com.janboerman.invsee.spigot.addon.give.impl_26_1_1.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_Paper_26_1_1 extends SetupImpl {
+    Impl_Paper_26_1_1() {
+        super(com.janboerman.invsee.paper.addon.give.impl_26_1_1.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_1_21_11 extends SetupImpl {
+    Impl_1_21_11() {
+        super(com.janboerman.invsee.spigot.addon.give.impl_1_21_11_R7.GiveImpl.INSTANCE);
+    }
+}
+
+class Impl_Paper_1_21_11 extends SetupImpl {
+    Impl_Paper_1_21_11() {
+        super(com.janboerman.invsee.paper.addon.give.impl_1_21_11.GiveImpl.INSTANCE);
     }
 }
 

@@ -1,6 +1,11 @@
-name: Compile
+name: Build
 
-on: [push]
+on:
+  push:
+    branches:
+      - '**'   # run on all branches
+    tags-ignore:
+      - '**'   # ignore all tags
 
 jobs:
   build:
@@ -40,9 +45,10 @@ jobs:
           distribution: 'microsoft'
           java-version: '21'
           cache: 'maven'
-      - name: Install CraftBukkit 1.20.6, 1.21, 1.21, 1.21.4, 1.21.5, 1.21.7
+      - name: Install CraftBukkit 1.20.6, 1.21, 1.21, 1.21.4, 1.21.5, 1.21.7, 1.21.9, 1.21.11
         # Use build number 4287 to compile CraftBukkit 1.21,
-        # Use build number 5422 to compile CraftBukkit 1.21.7,
+        # Use build number 4522 to compile CraftBukkit 1.21.7,
+        # Use build number 4539 to compile CraftBukkit 1.21.9
         # https://hub.spigotmc.org/jira/browse/BUILDTOOLS-658
         # https://hub.spigotmc.org/versions/
         run: |
@@ -52,26 +58,31 @@ jobs:
           java -jar BuildTools.jar --rev 1.21.4 --compile craftbukkit --remapped
           java -jar BuildTools.jar --rev 1.21.5 --compile craftbukkit --remapped
           java -jar BuildTools.jar --rev 4522 --compile craftbukkit --remapped
-          java -jar BuildTools.jar --rev 1.21.9 --compile craftbukkit --remapped
+          java -jar BuildTools.jar --rev 4539 --compile craftbukkit --remapped
+          java -jar BuildTools.jar --rev 4576 --compile craftbukkit --remapped
+      - name: Install Paper 1.21.11
+        run: |
+          mvn ca.bkaw:paper-nms-maven-plugin:init --pl :impl_paper_1_21_11
+      - name: Install JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'microsoft'
+          java-version: '25'
+          cache: 'maven'
+      # Use build number 4617 to compile CraftBukkit 26.1.1
+      # https://hub.spigotmc.org/versions/
+      - name: Install CraftBukkit 26.1.1, 26.2, 26.3
+        run: |
+          java -jar BuildTools.jar --rev 4617 --compile craftbukkit
+          java -jar BuildTools.jar --rev 26.2 --compile craftbukkit
+          java -jar BuildTools.jar --rev 26.3 --compile craftbukkit
+      - name: Install Paper 26.1.2, 26.2, 26.3
+        run: |
+          mvn ca.bkaw:paper-nms-maven-plugin:init --pl :impl_paper_26_1_2
+          mvn ca.bkaw:paper-nms-maven-plugin:init --pl :impl_paper_26_2
+          mvn ca.bkaw:paper-nms-maven-plugin:init --pl :impl_paper_26_3
       - name: Compile InvSee++
         run: mvn clean package install --batch-mode --update-snapshots
-      - name: Create tagged release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            InvSee++_Plugin/target/InvSee++.jar
-            InvSee++_Give_Plugin/target/InvSee++_Give.jar
-            InvSee++_Clear_Plugin/target/InvSee++_Clear.jar
-            InvSee++_Clone_Plugin/target/InvSee++_Clone.jar
-#      No longer needed since the maven-release-plugin already does this.
-#      - name: Deploy to GitHub Packages
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        if: startsWith(github.ref, 'refs/tags/')
-#        run: mvn deploy
       - name: Deploy Javadoc
         uses: MathieuSoysal/Javadoc-publisher.yml@v2.4.0
         if: github.ref == 'refs/heads/master'

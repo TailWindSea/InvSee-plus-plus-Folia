@@ -7,17 +7,20 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.janboerman.invsee.utils.FuzzyReflection;
 
-import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.PlayerEnderChestContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.PlayerDataStorage;
@@ -75,14 +78,15 @@ public final class HybridServerSupport {
         }
     }
 
-    public static NonNullList<ItemStack> enderChestItems(PlayerEnderChestContainer enderChest) {
+    // return List<ItemStack> instead of NonNullList<ItemStack> to ensure compatibility with UniverseSpigot
+    public static List<ItemStack> enderChestItems(PlayerEnderChestContainer enderChest) {
         try {
             return enderChest.items;
         } catch (NoSuchFieldError | IllegalAccessError vanillaFieldIsActuallyPrivate) {
             try {
                 //call the forge method: getContents()Ljava/util/List<net/minecraft/world/item/ItemStack>;
                 //fortunately CraftBukkit contains this method as well, so we can just call it directly without reflection! :D
-                return (NonNullList<ItemStack>) enderChest.getContents();
+                return enderChest.getContents();
             } catch (Throwable forgeMethodNotFound) {
                 RuntimeException ex = new RuntimeException("No method known of getting the enderchest items");
                 ex.addSuppressed(vanillaFieldIsActuallyPrivate);
@@ -107,6 +111,52 @@ public final class HybridServerSupport {
                 RuntimeException ex = new RuntimeException("No method known of loading the player's data file");
                 ex.addSuppressed(craftbukkitMethodNotFound);
                 ex.addSuppressed(paperMethodNotFound);
+                throw ex;
+            }
+        }
+    }
+
+    public static MinecraftServer getServer(ServerPlayer nmsPlayer) {
+        try {
+            return nmsPlayer.server;
+        } catch (IllegalAccessError error) {
+            Field[] fields = FuzzyReflection.getFieldOfType(ServerPlayer.class, MinecraftServer.class);
+            if (fields.length == 1) {
+                try {
+                    return (MinecraftServer) fields[0].get(nmsPlayer);
+                } catch (IllegalAccessException exception) {
+                    RuntimeException ex = new RuntimeException("No method known of obtaining the EntityPlayer's MinecraftServer");
+                    ex.addSuppressed(error);
+                    ex.addSuppressed(exception);
+                    throw ex;
+                }
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    public static Optional<CompoundTag> loadPlayerData(PlayerDataStorage worldNbtStorage, Player entityHuman) {
+        try {
+            return worldNbtStorage.load(entityHuman);
+        } catch (NoSuchMethodError nsme) {
+            return worldNbtStorage.load(entityHuman.nameAndId());
+        }
+    }
+
+    public static void spawnIn(FakeEntityPlayer fakeEntityPlayer, ServerLevel world) {
+        try {
+            fakeEntityPlayer.spawnIn(world, true/*ignore respawn anchor charge*/); //note: not only sets the ServerLevel, also sets x/y/z coordinates and gamemode.
+        } catch (NoSuchMethodError e1) {
+            RuntimeException ex = new RuntimeException("No method known to set the player's location.");
+            ex.addSuppressed(e1);
+            try {
+                // Because we are likely on Paper, and it uses mojang mappings at runtime, we can just reflectively call the method
+                // without worrying about obfuscation mappings :)
+                Method method = ServerPlayer.class.getDeclaredMethod("spawnIn", ServerLevel.class);
+                method.invoke(fakeEntityPlayer, world);
+            } catch (ReflectiveOperationException e3) {
+                ex.addSuppressed(e3);
                 throw ex;
             }
         }

@@ -3,11 +3,12 @@
 
     <groupId>com.janboerman.invsee</groupId>
     <artifactId>invsee-plus-plus</artifactId>
-    <version>0.30.11-SNAPSHOT</version>
+    <version>0.31.23-SNAPSHOT</version>
 
     <modules>
         <module>Utils</module>
         <module>Mojang_API</module>
+        <module>FastStats</module>
         <module>InvSee++_Common</module>
         <module>InvSee++_Platforms/Impl_1_8_8_R3</module>
         <module>InvSee++_Platforms/Impl_1_12_2_R1</module>
@@ -24,6 +25,14 @@
         <module>InvSee++_Platforms/Impl_1_21_5_R4</module>
         <module>InvSee++_Platforms/Impl_1_21_7_R5</module>
         <module>InvSee++_Platforms/Impl_1_21_9_R6</module>
+        <module>InvSee++_Platforms/Impl_1_21_11_R7</module>
+        <module>InvSee++_Platforms/Impl_Paper_1_21_11</module>
+        <module>InvSee++_Platforms/Impl_26_1_1</module>
+        <module>InvSee++_Platforms/Impl_26_2</module>
+        <module>InvSee++_Platforms/Impl_26_3</module>
+        <module>InvSee++_Platforms/Impl_Paper_26_1_2</module>
+        <module>InvSee++_Platforms/Impl_Paper_26_2</module>
+        <module>InvSee++_Platforms/Impl_Paper_26_3</module>
         <module>InvSee++_Platforms/Impl_Glowstone</module>
         <module>InvSee++_MultiverseInventories</module> <!-- TODO finish this module -->
         <module>InvSee++_PerWorldInventory</module>
@@ -44,10 +53,19 @@
         <module>InvSee++_Give_Platforms/Give_Impl_1_21_5_R4</module>
         <module>InvSee++_Give_Platforms/Give_Impl_1_21_7_R5</module>
         <module>InvSee++_Give_Platforms/Give_Impl_1_21_9_R6</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_1_21_11_R7</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_Paper_1_21_11</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_26_1_1</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_26_2</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_26_3</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_Paper_26_1_2</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_Paper_26_2</module>
+        <module>InvSee++_Give_Platforms/Give_Impl_Paper_26_3</module>
         <module>InvSee++_Give_Platforms/Give_Impl_Glowstone</module>
         <module>InvSee++_Give_Plugin</module>
         <module>InvSee++_Clear_Plugin</module>
         <module>InvSee++_Clone_Plugin</module>
+        <module>InvSee++_Test_Plugin</module>
     </modules>
     <packaging>pom</packaging>
 
@@ -56,7 +74,7 @@
 
     <scm>
         <developerConnection>scm:git:ssh://git@github.com/Jannyboy11/InvSee-plus-plus.git</developerConnection>
-        <tag>v0.29.12</tag>
+        <tag>v0.31.20</tag>
     </scm>
 
     <distributionManagement>
@@ -76,10 +94,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <junit.version>5.10.2</junit.version>
-        <specialsource-maven-plugin.version>2.0.2</specialsource-maven-plugin.version>
+        <specialsource-maven-plugin.version>2.0.4</specialsource-maven-plugin.version>
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-        <maven-shade-plugin.version>3.5.3</maven-shade-plugin.version>
+        <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
         <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
 
         <maven.deploy.skip>releases</maven.deploy.skip>
@@ -109,9 +127,9 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <!-- Folia api javadoc -->
+                    <!-- Spigot api javadoc -->
                     <links>
-                        <link>https://jd.papermc.io/folia/1.19/</link>
+                        <link>https://hub.spigotmc.org/javadocs/bukkit/</link>
                     </links>
 
                     <!-- make the javadoc tool stop complain about unrecognised tags -->
@@ -143,7 +161,7 @@
                     <failOnError>false</failOnError>
 
                     <!-- so that proper hyperlinks to standard jdk classes are generated -->
-                    <additionalOptions>-source 17</additionalOptions>
+                    <additionalOptions>-source 25</additionalOptions>
                 </configuration>
             </plugin>
         </plugins>

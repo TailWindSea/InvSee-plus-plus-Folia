@@ -7,13 +7,15 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
 
 import com.janboerman.invsee.utils.FuzzyReflection;
 
-import net.minecraft.core.NonNullList;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.PlayerEnderChestContainer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.PlayerDataStorage;
 
 public class HybridServerSupport {
@@ -63,18 +65,39 @@ public class HybridServerSupport {
         }
     }
 
-    public static NonNullList<ItemStack> enderChestItems(PlayerEnderChestContainer enderChest) {
+    // return List<ItemStack> instead of NonNullList<ItemStack> to ensure compatibility with UniverseSpigot
+    public static List<ItemStack> enderChestItems(PlayerEnderChestContainer enderChest) {
         try {
             return enderChest.items;
         } catch (NoSuchFieldError | IllegalAccessError vanillaFieldIsActuallyPrivate) {
             try {
                 //call the forge method: getContents()Ljava/util/List<net/minecraft/world/item/ItemStack>;
                 //fortunately CraftBukkit contains this method as well, so we can just call it directly without reflection! :D
-                return (NonNullList<ItemStack>) enderChest.getContents();
+                return enderChest.getContents();
             } catch (Throwable forgeMethodNotFound) {
                 RuntimeException ex = new RuntimeException("No method known of getting the enderchest items");
                 ex.addSuppressed(vanillaFieldIsActuallyPrivate);
                 ex.addSuppressed(forgeMethodNotFound);
+                throw ex;
+            }
+        }
+    }
+
+    public static void spawnIn(FakeEntityPlayer fakeEntityPlayer, ServerLevel world) {
+        try {
+            fakeEntityPlayer.spawnIn(world);
+        } catch (NoSuchMethodError e1) {
+            // We are probably on Leaf which has added the boolean argument to the spawnIn method.
+            RuntimeException ex = new RuntimeException("No method known to set the player's location.");
+            ex.addSuppressed(e1);
+            try {
+                // Because we are likely on a fork of Paper, and it uses mojang mappings at runtime, we can just reflectively call the method
+                // without worrying about obfuscation mappings :)
+                // fakeEntityPlayer.spawnIn(world, true/*ignore respawn anchor charge*/);
+                Method method = ServerPlayer.class.getDeclaredMethod("spawnIn", Level.class, boolean.class);
+                method.invoke(fakeEntityPlayer, world, true);
+            } catch (ReflectiveOperationException e3) {
+                ex.addSuppressed(e3);
                 throw ex;
             }
         }

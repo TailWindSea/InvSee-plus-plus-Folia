@@ -28,16 +28,36 @@ public class ServerSoftware {
             CRAFTBUKKIT_1_21_7 = new ServerSoftware(CRAFTBUKKIT, _1_21_7),
             CRAFTBUKKIT_1_21_8 = new ServerSoftware(CRAFTBUKKIT, _1_21_8),
             CRAFTBUKKIT_1_21_9 = new ServerSoftware(CRAFTBUKKIT, _1_21_9),
+            CRAFTBUKKIT_1_21_10 = new ServerSoftware(CRAFTBUKKIT, _1_21_10),
+            CRAFTBUKKIT_1_21_11 = new ServerSoftware(CRAFTBUKKIT, _1_21_11),
+            CRAFTBUKKIT_26_1 = new ServerSoftware(CRAFTBUKKIT, _26_1),
+            CRAFTBUKKIT_26_1_1 = new ServerSoftware(CRAFTBUKKIT, _26_1_1),
+            CRAFTBUKKIT_26_1_2 = new ServerSoftware(CRAFTBUKKIT, _26_1_2),
+            CRAFTBUKKIT_26_2 = new ServerSoftware(CRAFTBUKKIT, _26_2),
+            CRAFTBUKKIT_26_3 = new ServerSoftware(CRAFTBUKKIT, _26_3),
+            PAPER_1_21_11 = new ServerSoftware(PAPER, _1_21_11),
+            PAPER_26_1_1 = new ServerSoftware(PAPER, _26_1_1),
+            PAPER_26_1_2 = new ServerSoftware(PAPER, _26_1_2),
+            PAPER_26_2 = new ServerSoftware(PAPER, _26_2),
+            PAPER_26_3 = new ServerSoftware(PAPER, _26_3),
             GLOWSTONE_1_8_8 = new ServerSoftware(GLOWSTONE, _1_8_8),
             GLOWSTONE_1_8_9 = new ServerSoftware(GLOWSTONE, _1_8_9),
             GLOWSTONE_1_12_2 = new ServerSoftware(GLOWSTONE, _1_12_2);
 
-    private MinecraftPlatform platform;
-    private MinecraftVersion version;
+    private final MinecraftPlatform platform;
+    private final MinecraftVersion version;
+    private final String versionString;
 
     public ServerSoftware(MinecraftPlatform platform, MinecraftVersion version) {
         this.platform = platform;
         this.version = version;
+        this.versionString = version.toString();
+    }
+
+    public ServerSoftware(MinecraftPlatform platform, String version) {
+        this.platform = platform;
+        this.versionString = version;
+        this.version = null;
     }
 
     public static ServerSoftware detect(final Server server) {
@@ -128,16 +148,26 @@ public class ServerSoftware {
                 }
             case "org.bukkit.craftbukkit.v1_21_R6.CraftServer":
                 switch (CraftbukkitMappingsVersion.getMappingsVersion(server)) {
-                    case CraftbukkitMappingsVersion._1_21_9: return CRAFTBUKKIT_1_21_9;
+                    case CraftbukkitMappingsVersion._1_21_9:
+                        //unfortunately we have to do this since CraftBukkit 1.21.9 and 1.21.10 share the same mappings version.
+                        switch (server.getBukkitVersion()) {
+                            case "1.21.9-R0.1-SNAPSHOT": return CRAFTBUKKIT_1_21_9;
+                            case "1.21.10-R0.1-SNAPSHOT": return CRAFTBUKKIT_1_21_10;
+                        }
+                        //best-effort
+                        return CRAFTBUKKIT_1_21_10;
+                }
+            case "org.bukkit.craftbukkit.v1_21_R7.CraftServer":
+                switch (CraftbukkitMappingsVersion.getMappingsVersion(server)) {
+                    case CraftbukkitMappingsVersion._1_21_11: return CRAFTBUKKIT_1_21_11;
                 }
             case "org.bukkit.craftbukkit.CraftServer":
-                // CraftBukkit 1.20.6 and up or Paper 1.20.4 and up:
+                // CraftBukkit 26.1 and up or Paper 1.20.4 and up:
                 try {
                     // Call Server#getMinecraftVersion() to find out the version (this method was added by Paper).
-                    return new ServerSoftware(PAPER, MinecraftVersion.fromString(server.getMinecraftVersion()));
+                    return new ServerSoftware(PAPER, server.getMinecraftVersion());
                 } catch (NoSuchMethodError nsme) {
-                    // Apparently we are not running on Paper (thanks CraftBukkit...)
-                    //TODO does this code-path ackshually trigger on re-obfuscated craftbukkit?
+                    // Apparently we are not running on Paper
                     switch (CraftbukkitMappingsVersion.getMappingsVersion(server)) {
                         case CraftbukkitMappingsVersion._1_20_6: return CRAFTBUKKIT_1_20_6;
                         case CraftbukkitMappingsVersion._1_21_1: return CRAFTBUKKIT_1_21_1;
@@ -147,6 +177,15 @@ public class ServerSoftware {
                         case CraftbukkitMappingsVersion._1_21_6: return CRAFTBUKKIT_1_21_6;
                         case CraftbukkitMappingsVersion._1_21_7: return CRAFTBUKKIT_1_21_7;
                         case CraftbukkitMappingsVersion._1_21_9: return CRAFTBUKKIT_1_21_9;
+                        case CraftbukkitMappingsVersion._1_21_11: return CRAFTBUKKIT_1_21_11;
+                        case CraftbukkitMappingsVersion._26_1_1: switch (server.getBukkitVersion()) {
+                            case "26.1-R0.1-SNAPSHOT": return CRAFTBUKKIT_26_1;
+                            case "26.1.1-R0.1-SNAPSHOT": return CRAFTBUKKIT_26_1_1;
+                            case "26.1.2-R0.1-SNAPSHOT": return CRAFTBUKKIT_26_1_2;
+                            case "26.2-R0.1-SNAPSHOT": return CRAFTBUKKIT_26_2;
+                            case "26.3-R0.1-SNAPSHOT": return CRAFTBUKKIT_26_3;
+                            default: return CRAFTBUKKIT_26_3;
+                        }
                     }
                 }
             case "net.glowstone.GlowServer":
@@ -160,7 +199,7 @@ public class ServerSoftware {
         }
 
         if (serverClassName.matches("org\\.bukkit\\.craftbukkit\\.v((.?)*)\\.CraftServer")) {
-            return new ServerSoftware(CRAFTBUKKIT, null);
+            return new ServerSoftware(CRAFTBUKKIT, (String)null);
         }
 
         return null;
@@ -168,7 +207,7 @@ public class ServerSoftware {
 
     @Override
     public String toString() {
-        return platform + " version " + version;
+        return platform + " version " + versionString;
     }
 
     @Override
@@ -177,12 +216,12 @@ public class ServerSoftware {
         if (!(o instanceof ServerSoftware)) return false;
 
         ServerSoftware that = (ServerSoftware) o;
-        return this.platform == that.platform && this.version == that.version;
+        return this.platform == that.platform && Objects.equals(this.versionString, that.versionString);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(platform, version);
+        return Objects.hash(platform, versionString);
     }
 
     public MinecraftPlatform getPlatform() {
@@ -191,6 +230,10 @@ public class ServerSoftware {
 
     public MinecraftVersion getVersion() {
         return version;
+    }
+
+    public String getVersionString() {
+        return versionString;
     }
 
 }

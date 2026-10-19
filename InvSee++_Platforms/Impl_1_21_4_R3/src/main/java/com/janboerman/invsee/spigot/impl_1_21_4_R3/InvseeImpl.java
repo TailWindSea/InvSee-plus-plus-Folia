@@ -30,6 +30,7 @@ import com.janboerman.invsee.spigot.internal.EventHelper;
 import com.janboerman.invsee.spigot.internal.InvseePlatform;
 import com.janboerman.invsee.spigot.internal.NamesAndUUIDs;
 import com.janboerman.invsee.spigot.internal.OpenSpectatorsCache;
+import com.janboerman.invsee.spigot.internal.resolve.ResolveStrategyType;
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
@@ -80,13 +81,8 @@ public class InvseeImpl implements InvseePlatform {
         this.cache = cache;
         this.scheduler = scheduler;
 
-        if (lookup.onlineMode(plugin.getServer())) {
-            lookup.uuidResolveStrategies.add(new UUIDSearchSaveFilesStrategy(plugin, scheduler));
-        } else {
-            // If we are in offline mode, then we should insert this strategy *before* the UUIDOfflineModeStrategy.
-            lookup.uuidResolveStrategies.add(lookup.uuidResolveStrategies.size() - 1, new UUIDSearchSaveFilesStrategy(plugin, scheduler));
-        }
-        lookup.nameResolveStrategies.add(2, new NameSearchSaveFilesStrategy(plugin, scheduler));
+        lookup.addUuidResolveStrategy(ResolveStrategyType.PLAYER_DATA_SAVE_FILES, new UUIDSearchSaveFilesStrategy(plugin, scheduler));
+        lookup.addNameResolveType(ResolveStrategyType.PLAYER_DATA_SAVE_FILES, new NameSearchSaveFilesStrategy(plugin, scheduler));
     }
 
     @Override
@@ -120,10 +116,8 @@ public class InvseeImpl implements InvseePlatform {
             ItemStack inaccessible = CraftItemStack.asNMSCopy(palette.inaccessible());
             for (int i = PlayerInventorySlot.CONTAINER_35.defaultIndex() + 1; i < nmsInventory.getContainerSize(); i++) {
                 Integer idx = mirror.getIndex(PlayerInventorySlot.byDefaultIndex(i));
-                if (idx == null) {
-                    sendItemChange(nmsPlayer, i, inaccessible);
-                    continue;
-                }
+                if (idx == null) continue;
+
                 int rawIndex = idx.intValue();
 
                 Slot slot = nmsWindow.getSlot(rawIndex);
@@ -307,7 +301,7 @@ public class InvseeImpl implements InvseePlatform {
                 level = server.getHandle().getServer().getLevel(levelResourceKey);
 
                 if (level != null) {
-                    fakeEntityPlayer.spawnIn(level); //note: not only sets the ServerLevel, also sets x/y/z coordinates and gamemode.
+                    HybridServerSupport.spawnIn(fakeEntityPlayer, level); //note: not only sets the ServerLevel, also sets x/y/z coordinates and gamemode.
                 }
             }
 

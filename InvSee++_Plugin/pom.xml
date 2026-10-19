@@ -2,7 +2,7 @@
     <parent>
         <groupId>com.janboerman.invsee</groupId>
         <artifactId>invsee-plus-plus</artifactId>
-        <version>0.30.11-SNAPSHOT</version>
+        <version>0.31.23-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -121,6 +121,14 @@
             <version>3.0.2</version>
             <scope>compile</scope>
         </dependency>
+        <!-- This is a bit of an odd one: FastStats is vendored in our sources.
+             We may use its own maven dependency in the future whenever Java 8 support is implemented. -->
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>faststats</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
 
         <!-- first-party libraries -->
         <dependency>
@@ -230,6 +238,54 @@
         <dependency>
             <groupId>com.janboerman.invsee</groupId>
             <artifactId>impl_1_21_9_r6</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_1_21_11_r7</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_paper_1_21_11</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_26_1_1</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_paper_26_1_2</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_26_2</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_paper_26_2</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_26_3</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.janboerman.invsee</groupId>
+            <artifactId>impl_paper_26_3</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>

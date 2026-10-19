@@ -30,12 +30,18 @@ import com.janboerman.invsee.spigot.internal.EventHelper;
 import com.janboerman.invsee.spigot.internal.InvseePlatform;
 import com.janboerman.invsee.spigot.internal.NamesAndUUIDs;
 import com.janboerman.invsee.spigot.internal.OpenSpectatorsCache;
+import com.janboerman.invsee.spigot.internal.TestingCompatLayer;
+import com.janboerman.invsee.spigot.internal.resolve.ResolveStrategyType;
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.DataResult;
 
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.ProblemReporter;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Registry;
+import org.bukkit.craftbukkit.v1_21_R6.CraftRegistry;
 import org.bukkit.craftbukkit.v1_21_R6.CraftServer;
 import org.bukkit.craftbukkit.v1_21_R6.CraftWorld;
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftHumanEntity;
@@ -48,7 +54,6 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.plugin.Plugin;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket;
@@ -68,7 +73,10 @@ import net.minecraft.world.level.storage.PlayerDataStorage;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.ValueInput;
 
-public class InvseeImpl implements InvseePlatform {
+import static com.janboerman.invsee.spigot.impl_1_21_9_R6.HybridServerSupport.getServer;
+import static com.janboerman.invsee.spigot.impl_1_21_9_R6.HybridServerSupport.loadPlayerData;
+
+public class InvseeImpl implements InvseePlatform, TestingCompatLayer {
 
     private final Plugin plugin;
     private final OpenSpectatorsCache cache;
@@ -79,13 +87,8 @@ public class InvseeImpl implements InvseePlatform {
         this.cache = cache;
         this.scheduler = scheduler;
 
-        if (lookup.onlineMode(plugin.getServer())) {
-            lookup.uuidResolveStrategies.add(new UUIDSearchSaveFilesStrategy(plugin, scheduler));
-        } else {
-            // If we are in offline mode, then we should insert this strategy *before* the UUIDOfflineModeStrategy.
-            lookup.uuidResolveStrategies.add(lookup.uuidResolveStrategies.size() - 1, new UUIDSearchSaveFilesStrategy(plugin, scheduler));
-        }
-        lookup.nameResolveStrategies.add(2, new NameSearchSaveFilesStrategy(plugin, scheduler));
+        lookup.addUuidResolveStrategy(ResolveStrategyType.PLAYER_DATA_SAVE_FILES, new UUIDSearchSaveFilesStrategy(plugin, scheduler));
+        lookup.addNameResolveType(ResolveStrategyType.PLAYER_DATA_SAVE_FILES, new NameSearchSaveFilesStrategy(plugin, scheduler));
     }
 
     @Override
@@ -119,10 +122,8 @@ public class InvseeImpl implements InvseePlatform {
             ItemStack inaccessible = CraftItemStack.asNMSCopy(palette.inaccessible());
             for (int i = PlayerInventorySlot.CONTAINER_35.defaultIndex() + 1; i < nmsInventory.getContainerSize(); i++) {
                 Integer idx = mirror.getIndex(PlayerInventorySlot.byDefaultIndex(i));
-                if (idx == null) {
-                    sendItemChange(nmsPlayer, i, inaccessible);
-                    continue;
-                }
+                if (idx == null) continue;
+
                 int rawIndex = idx.intValue();
 
                 Slot slot = nmsWindow.getSlot(rawIndex);
@@ -225,7 +226,7 @@ public class InvseeImpl implements InvseePlatform {
     			gameProfile);
     	
     	return CompletableFuture.supplyAsync(() -> {
-    		Optional<ValueInput> playerCompound = worldNBTStorage.load(fakeEntityHuman)
+    		Optional<ValueInput> playerCompound = loadPlayerData(worldNBTStorage, fakeEntityHuman)
                     .map(tag -> TagValueInput.create(ThrowingProblemReporter.INSTANCE, fakeEntityHuman.registryAccess(), tag));
             if (playerCompound.isEmpty()) {
                 // player file does not exist
@@ -274,6 +275,8 @@ public class InvseeImpl implements InvseePlatform {
     	}, runnable -> scheduler.executeSyncPlayer(playerId, runnable, null));
     }
 
+
+
     private void loadWorldDataAndGameMode(CraftServer server, FakeEntityPlayer fakeEntityPlayer) {
         // In Paper, Entity#load(CompoundTag) does not load the world info.
         // Thus, in order to not upset our users, we do it ourselves manually in order to work around this Paper bug.
@@ -281,7 +284,7 @@ public class InvseeImpl implements InvseePlatform {
         // See PaperMC/PlayerList#placeNewPlayer.
 
         PlayerDataStorage playerDataStorage = server.getHandle().playerIo;
-        Optional<ValueInput> optional = playerDataStorage.load(fakeEntityPlayer)
+        Optional<ValueInput> optional = loadPlayerData(playerDataStorage, fakeEntityPlayer)
                 .map(tag -> TagValueInput.create(ThrowingProblemReporter.INSTANCE, fakeEntityPlayer.registryAccess(), tag));
 
         if (optional.isPresent()) {
@@ -309,7 +312,7 @@ public class InvseeImpl implements InvseePlatform {
                 level = server.getHandle().getServer().getLevel(levelResourceKey);
 
                 if (level != null) {
-                    fakeEntityPlayer.spawnIn(level, true/*ignore respawn anchor charge*/); //note: not only sets the ServerLevel, also sets x/y/z coordinates and gamemode.
+                    HybridServerSupport.spawnIn(fakeEntityPlayer, level);
                 }
             }
 
@@ -324,8 +327,9 @@ public class InvseeImpl implements InvseePlatform {
     }
 
     private static DataResult<ResourceKey<Level>> parseLegacyDimensionType(ValueInput nbttagcompound) {
+        // Attempt to read the dimension from an int.
         try {
-            Optional<Integer> dimensionInput = nbttagcompound.getInt("Dimension"); // because of our PoblemReporter, this throws an exception when the type is not int.
+            Optional<Integer> dimensionInput = nbttagcompound.getInt("Dimension"); // because of our ProblemReporter, this throws an exception when the type is not int.
             if (dimensionInput.isPresent()) {
                 switch (dimensionInput.get()) {
                     case -1: return DataResult.success(Level.NETHER);
@@ -339,6 +343,7 @@ public class InvseeImpl implements InvseePlatform {
             }
         }
 
+        // Attempt to read the dimension from a string.
         Optional<ResourceKey<Level>> decodedLevel = nbttagcompound.read("Dimension", Level.RESOURCE_KEY_CODEC);
         if (decodedLevel.isPresent()) {
             return DataResult.success(decodedLevel.get());
@@ -353,7 +358,7 @@ public class InvseeImpl implements InvseePlatform {
             nmsPlayer.connection.handleContainerClose(new ServerboundContainerClosePacket(nmsPlayer.containerMenu.containerId));
         }
 
-        CraftServer server = nmsPlayer.server.server;
+        CraftServer server = getServer(nmsPlayer).server;
         CraftPlayer bukkitPlayer = nmsPlayer.getBukkitEntity();
         nmsPlayer.containerMenu.transferTo(nmsView, bukkitPlayer);
         InventoryOpenEvent event = new InventoryOpenEvent(nmsView.getBukkitView());
@@ -429,5 +434,22 @@ public class InvseeImpl implements InvseePlatform {
         // Note: in the future, Registry.ITEM may become a stable api. We prefer to use that one since we don't care
         // about Block materials; we only care about Item materials.
         return res.filter(Material::isItem);
+    }
+
+
+    // === Testing ===
+
+    @Override
+    public Object loadPlayerSaveCompound(UUID playerId, String playerName) {
+        CraftServer craftServer = (CraftServer) plugin.getServer();
+        PlayerDataStorage worldNBTStorage = craftServer.getHandle().playerIo;
+        RegistryAccess registryAccess = CraftRegistry.getMinecraftRegistry();
+        ProblemReporter problemReporter = ThrowingProblemReporter.INSTANCE;
+
+        ValueInput valueInput = HybridServerSupport.load(worldNBTStorage, playerName, playerId.toString(), problemReporter, registryAccess).get();
+        TagValueInput tagValueInput = (TagValueInput) valueInput;
+        CompoundTag compoundTag = tagValueInput.input;
+
+        return compoundTag;
     }
 }

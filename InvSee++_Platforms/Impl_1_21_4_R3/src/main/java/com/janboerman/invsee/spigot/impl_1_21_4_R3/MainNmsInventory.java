@@ -5,13 +5,12 @@ import java.util.List;
 import com.janboerman.invsee.spigot.api.CreationOptions;
 import com.janboerman.invsee.spigot.api.target.Target;
 import com.janboerman.invsee.spigot.api.template.PlayerInventorySlot;
-import com.janboerman.invsee.spigot.impl_1_21_4_R3.MainBukkitInventory;
-import com.janboerman.invsee.spigot.impl_1_21_4_R3.MainNmsContainer;
 import com.janboerman.invsee.spigot.internal.inventory.AbstractNmsInventory;
 import com.janboerman.invsee.utils.ConcatList;
 import com.janboerman.invsee.utils.Ref;
 import com.janboerman.invsee.utils.SingletonList;
 
+import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.craftbukkit.v1_21_R3.entity.CraftHumanEntity;
 import org.bukkit.craftbukkit.v1_21_R3.util.CraftChatMessage;
 
@@ -26,9 +25,10 @@ import net.minecraft.world.item.ItemStack;
 
 class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBukkitInventory, MainNmsInventory> implements Container, MenuProvider {
 
-	protected NonNullList<ItemStack> storageContents;
-	protected NonNullList<ItemStack> armourContents;
-	protected NonNullList<ItemStack> offHand;
+	protected /*NonNull*/Runnable updateTargetCraftingResults;
+	protected /*NonNull*/List<ItemStack> storageContents;
+	protected /*NonNull*/List<ItemStack> armourContents;
+	protected /*NonNull*/List<ItemStack> offHand;
 	
 	protected Ref<ItemStack> onCursor;
 	protected List<ItemStack> craftingContents;
@@ -46,6 +46,9 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 		};
 		this.personalContents = this.craftingContents = target.inventoryMenu.getCraftSlots().getContents(); //luckily getContents() does not copy (in contrast to getItems() which uses List.copyOf(this.items) !!!)
         this.maxStack = inv.getMaxStackSize();
+		this.updateTargetCraftingResults = () -> {
+			if (target instanceof ServerPlayer serverPlayer) serverPlayer.inventoryMenu.slotsChanged(inv);
+		};
 	}
 
 	@Override
@@ -78,6 +81,7 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 		this.onCursor = from.onCursor;
 		this.craftingContents = from.craftingContents;
 		this.personalContents = from.personalContents;
+		this.updateTargetCraftingResults = from.updateTargetCraftingResults;
 		setChanged();
 	}
 	
@@ -125,6 +129,7 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 		if (craftingContents != personalContents) {
 			craftingContents.clear();
 		}
+		setChanged();
 	}
 
 	//vanilla
@@ -238,7 +243,8 @@ class MainNmsInventory extends AbstractNmsInventory<PlayerInventorySlot, MainBuk
 	//vanilla
 	@Override
 	public void setChanged() {
-		//nothing to do here?
+		//update target player cached crafting recipe:
+		updateTargetCraftingResults.run();
 	}
 
 	//vanilla
